@@ -1,27 +1,36 @@
 (ns morse.api
   (:require [clojure.tools.logging :as log]
             [clj-http.client :as http]
-            [clojure.string :as string])
+            [clojure.string :as string]
+            [cheshire.core :as json]
+            [clojure.core.async :as a])
   (:import (java.io File)))
 
 
 (def base-url "https://api.telegram.org/bot")
 
 
-(defn get-updates
+(defn get-updates-async
   "Receive updates from Bot via long-polling endpoint"
-  [token {:keys [limit offset timeout]}]
-  (let [url (str base-url token "/getUpdates")
-        query {:timeout (or timeout 1)
-               :offset  (or offset 0)
-               :limit   (or limit 100)}
-        resp (http/get url {:as :json
-                            :query-params query
-                            :throw-exceptions false})]
-    (if (-> resp :status (< 300))
-      (-> resp :body :result)
-      (log/error "Telegram returned" (:status resp)
-                 "from /getUpdates:" (:body resp)))))
+  ([token {:keys [limit offset timeout]}]
+   (let [url         (str base-url token "/getUpdates")
+         query       {:timeout (or timeout 1)
+                      :offset  (or offset 0)
+                      :limit   (or limit 100)}
+         request     {:query-params query
+                      :async?       true}
+         result      (a/chan)
+         on-success  (fn [resp]
+                       (if-let [data (-> resp :body (json/parse-string true) :result)]
+                         (a/put! result data)
+                         (a/put! result ::error))
+                       (a/close! result))
+         on-failure  (fn [err]
+                       (log/debug err "Exception while getting updates from Telegram API")
+                       (a/put! result ::error)
+                       (a/close! result))]
+     (http/get url request on-success on-failure)
+     result)))
 
 
 (defn set-webhook
@@ -36,11 +45,11 @@
   "Sends message to the chat"
   ([token chat-id text] (send-text token chat-id {} text))
   ([token chat-id options text]
-   (let [url (str base-url token "/sendMessage")
+   (let [url  (str base-url token "/sendMessage")
          body (into {:chat_id chat-id :text text} options)
          resp (http/post url {:content-type :json
-                              :as :json
-                              :form-params body})]
+                              :as           :json
+                              :form-params  body})]
      (-> resp :body))))
 
 (defn edit-text
@@ -48,23 +57,33 @@
   (https://core.telegram.org/bots/api#editmessagetext)"
   ([token chat-id message-id text] (edit-text token chat-id message-id {} text))
   ([token chat-id message-id options text]
-    (let [url (str base-url token "/editMessageText")
-          query (into {:chat_id chat-id :text text :message_id message-id} options)
-          resp (http/post url {:content-type :json
-                               :as :json
-                               :form-params query})
-          ]
-         (-> resp :body))))
+   (let [url   (str base-url token "/editMessageText")
+         query (into {:chat_id chat-id :text text :message_id message-id} options)
+         resp  (http/post url {:content-type :json
+                               :as           :json
+                               :form-params  query})
+         ]
+     (-> resp :body))))
+
+(defn delete-text
+  "Removing a message from the chat"
+  [token chat-id message-id]
+  (let [url   (str base-url token "/deleteMessage")
+        query {:chat_id chat-id :message_id message-id}
+        resp  (http/post url {:content-type :json
+                              :as           :json
+                              :form-params  query})]
+    (-> resp :body)))
 
 (defn send-file [token chat-id options file method field filename]
   "Helper function to send various kinds of files as multipart-encoded"
-  (let [url (str base-url token method)
-        base-form [{:part-name "chat_id" :content (str chat-id)}
-                   {:part-name field :content file :name filename}]
+  (let [url          (str base-url token method)
+        base-form    [{:part-name "chat_id" :content (str chat-id)}
+                      {:part-name field :content file :name filename}]
         options-form (for [[key value] options]
                        {:part-name (name key) :content value})
-        form (into base-form options-form)
-        resp (http/post url {:as :json :multipart form})]
+        form         (into base-form options-form)
+        resp         (http/post url {:as :json :multipart form})]
     (-> resp :body)))
 
 
@@ -134,11 +153,23 @@
   "Sends an answer to an inline query"
   ([token inline-query-id results] (answer-inline token inline-query-id {} results))
   ([token inline-query-id options results]
-    (let [url (str base-url token "/answerInlineQuery")
-          body (into {:inline_query_id inline-query-id :results results} options)
-          resp (http/post url {:content-type :json
-                               :as :json
-                               :form-params body})]
+   (let [url  (str base-url token "/answerInlineQuery")
+         body (into {:inline_query_id inline-query-id :results results} options)
+         resp (http/post url {:content-type :json
+                              :as           :json
+                              :form-params  body})]
+     (-> resp :body))))
+
+(defn answer-callback
+  "Sends an answer to an callback query"
+  ([token callback-query-id] (answer-callback token callback-query-id "" false))
+  ([token callback-query-id text] (answer-callback token callback-query-id text false))
+  ([token callback-query-id text show-alert]
+   (let [url  (str base-url token "/answerCallbackQuery")
+         body {:callback_query_id callback-query-id :text text :show_alert show-alert}
+         resp (http/post url {:content-type :json
+                              :as           :json
+                              :form-params  body})]
      (-> resp :body))))
 
 (def telegram-file-api "https://api.telegram.org/file")

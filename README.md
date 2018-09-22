@@ -1,6 +1,8 @@
 # Morse
 
-[![Circle CI](https://circleci.com/gh/Otann/morse.svg?style=shield&no-cache=2)](https://circleci.com/gh/Otann/morse)
+[![Circle CI](https://circleci.com/gh/Otann/morse.svg?style=shield&no-cache=5)](https://circleci.com/gh/Otann/morse)
+[![Clojars](https://img.shields.io/clojars/v/morse.svg)](https://clojars.org/morse)
+[![codecov](https://codecov.io/gh/Otann/morse/branch/master/graph/badge.svg)](https://codecov.io/gh/Otann/morse)
 
 <img width="30%"
      align="right" padding="5px"
@@ -9,11 +11,10 @@
 
 Morse is a client for [Telegram](https://telegram.org) [Bot API](https://core.telegram.org/bots/api) for the [Clojure](http://clojure.org) programming language.
 
-[![Clojars Project](http://clojars.org/morse/latest-version.svg?&no-cache=6)](https://clojars.org/morse)
 
 ## Installation
 
-Add `[morse "0.2.4"]` to the dependency section in your project.clj file.
+Add `[morse "0.4.0"]` to the dependency section in your project.clj file.
 
 There is also a template which you can use to bootstrap your project:
 
@@ -22,12 +23,12 @@ There is also a template which you can use to bootstrap your project:
     export TELEGRAM_TOKEN=...
     lein run
 
-## Detecting user's actions 
+## Detecting user's actions
 
 Telegram sends updates about events in chats in form of
 [Update](https://core.telegram.org/bots/api#update) objects.
 
-Inside those there could be commands, inline queries and many more. 
+Inside those there could be commands, inline queries and many more.
 To help you with these Morse provides you helpers and some macros in
 `morse.handlers` namespace.
 
@@ -38,7 +39,7 @@ you'll find similarities here:
 (ns user
   (:require [morse.handlers :as h]
             [morse.api :as t]))
-            
+
 (def token "YOUR-BIG-SECRET")          
 
 ; This will define bot-api function, which later could be
@@ -48,20 +49,20 @@ you'll find similarities here:
   ; This could be done in form of a function:
   (h/command-fn "start" (fn [{{id :id :as chat} :chat}]
                           (println "Bot joined new chat: " chat)
-                          (t/send-text token id "Welcome!"))) 
+                          (t/send-text token id "Welcome!")))
 
   ; You can use short syntax for same purposes
   ; Destructuring works same way as in function above
   (h/command "help" {{id :id :as chat} :chat}
     (println "Help was requested in " chat)
     (t/send-text token id "Help is on the way"))
-  
+
   ; Handlers will be applied until there are any of those
   ; returns non-nil result processing update.
-  
-  ; Note that sending stuff to the user returns non-nil 
+
+  ; Note that sending stuff to the user returns non-nil
   ; response from Telegram API.     
-  
+
   ; So match-all catch-through case would look something like this:
   (h/message message (println "Intercepted message:" message)))
 
@@ -101,7 +102,7 @@ in a similar form:
 ### Callbacks
 
 You can provide handlers for [Callbacks](https://core.telegram.org/bots/api#answercallbackquery)
-which are sent from [inline keyboards](https://core.telegram.org/bots#inline-keyboards-and-on-the-fly-updating) 
+which are sent from [inline keyboards](https://core.telegram.org/bots#inline-keyboards-and-on-the-fly-updating)
 
 ```clojure
 (callback-fn (fn [data] (println "Received callback: " inline)))
@@ -251,8 +252,19 @@ Sends an answer to an inline query.
                      :gif_url "http://funnygifs/gif.gif"}])
 ```
 
+### [`answerCallbackQuery`](https://core.telegram.org/bots/api#answercallbackquery)
+
+Sends an answer to an callback query sent from inline keyboards.
+
+```clojure
+(api/answer-callback token
+                     callback-query-id
+                     text
+                     show-alert)
+```
+
 ## License
 
-Copyright © 2016 Anton Chebotaev
+Copyright © 2017 Anton Chebotaev
 
 Distributed under the Eclipse Public License either version 1.0.

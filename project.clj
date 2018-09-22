@@ -1,21 +1,23 @@
-(defproject morse "0.2.5-SNAPSHOT"
+(defproject morse "0.4.0"
   :description "Telegram Bot API"
 
   :url "https://github.com/otann/morse/"
 
   :dependencies [[org.clojure/clojure "1.8.0" :scope "provided"]
                  [org.clojure/tools.macro "0.1.5"]
-                 [org.clojure/core.async "0.2.374"]
+                 [org.clojure/core.async "0.3.465"]
                  [org.clojure/tools.logging "0.3.1"]
                  [clj-stacktrace "0.2.8"]
                  [cheshire "5.5.0"]
-                 [clj-http "2.1.0"]]
+                 [clj-http "3.7.0"]]
+
+  :plugins [[lein-cloverage "1.0.10"]]
 
   :profiles {:uberjar {:aot :all}
-             :dev {:dependencies [[clj-http-fake "1.0.2"]]
-                   :plugins [[com.jakemccrary/lein-test-refresh "0.14.0"]
-                             [com.taoensso/timbre "4.1.4"]
-                             [venantius/ultra "0.4.1"]]}}
+             :test    {:dependencies [[clj-http-fake "1.0.3"]]
+                       :plugins      [[pjstadig/humane-test-output "0.8.2"]
+                                      [com.jakemccrary/lein-test-refresh "0.14.0"]
+                                      [com.taoensso/timbre "4.1.4"]]}}
 
   ;; Artifact deployment info
   :scm {:name "git"
@@ -28,10 +30,7 @@
                   ["change" "version" "leiningen.release/bump-version" "release"]
                   ["vcs" "commit"]
                   ["vcs" "tag"]
-                  ["deploy" "clojars"]
-                  ["change" "version" "leiningen.release/bump-version"]
-                  ["vcs" "commit"]
-                  ["echo" "-e" "Now run:\\n\\n    lein vcs push\\n"]]
+                  ["deploy" "clojars"]]
 
   :pom-addition [:developers [:developer
                               [:name "Anton Chebotaev"]
