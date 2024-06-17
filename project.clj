@@ -1,20 +1,20 @@
-(defproject morse "0.4.3"
+(defproject hellonico/morse "0.4.3"
   :description "Telegram Bot API"
 
   :url "https://github.com/otann/morse/"
 
   :dependencies [[org.clojure/clojure "1.8.0" :scope "provided"]
-                 [org.clojure/tools.macro "0.1.5"]
-                 [org.clojure/core.async "0.4.474"]
-                 [org.clojure/tools.logging "0.4.1"]
+                 [org.clojure/tools.macro "0.2.0"]
+                 [org.clojure/core.async "1.6.681"]
+                 [org.clojure/tools.logging "1.3.0"]
                  [clj-stacktrace "0.2.8"]
-                 [cheshire "5.8.1"]
-                 [clj-http "3.9.1"]]
+                 [cheshire "5.13.0"]
+                 [clj-http "3.13.0"]]
 
   :plugins [[lein-cloverage "1.0.10"]]
 
   :profiles {:uberjar {:aot :all}
-             :test    {:dependencies [[clj-http-fake "1.0.3"]]
+             :test    {:dependencies [[clj-http-fake "1.0.4"]]
                        :plugins      [[pjstadig/humane-test-output "0.8.2"]
                                       [com.jakemccrary/lein-test-refresh "0.14.0"]
                                       [com.taoensso/timbre "4.1.4"]]}}
