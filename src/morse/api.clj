@@ -13,22 +13,22 @@
 (defn get-updates-async
   "Receive updates from Bot via long-polling endpoint"
   ([token {:keys [limit offset timeout]}]
-   (let [url         (str base-url token "/getUpdates")
-         query       {:timeout (or timeout 1)
-                      :offset  (or offset 0)
-                      :limit   (or limit 100)}
-         request     {:query-params query
-                      :async?       true}
-         result      (a/chan)
-         on-success  (fn [resp]
-                       (if-let [data (-> resp :body (json/parse-string true) :result)]
-                         (a/put! result data)
-                         (a/put! result ::error))
-                       (a/close! result))
-         on-failure  (fn [err]
-                       (log/debug err "Exception while getting updates from Telegram API")
-                       (a/put! result ::error)
-                       (a/close! result))]
+   (let [url        (str base-url token "/getUpdates")
+         query      {:timeout (or timeout 1)
+                     :offset  (or offset 0)
+                     :limit   (or limit 100)}
+         request    {:query-params query
+                     :async?       true}
+         result     (a/chan)
+         on-success (fn [resp]
+                      (if-let [data (-> resp :body (json/parse-string true) :result)]
+                        (a/put! result data)
+                        (a/put! result ::error))
+                      (a/close! result))
+         on-failure (fn [err]
+                      (log/debug err "Exception while getting updates from Telegram API")
+                      (a/put! result ::error)
+                      (a/close! result))]
      (http/get url request on-success on-failure)
      result)))
 
@@ -41,12 +41,49 @@
     (http/get url {:as :json :query-params query})))
 
 
+(defn get-file
+  "Gets url of the file"
+  [token file-id]
+  (let [url  (str base-url token "/getFile")
+        body {:file_id file-id}
+        resp (http/post url {:content-type :json
+                             :as           :json
+                             :form-params  body})]
+    (-> resp :body)))
+
+
+(defn get-user-profile-photos
+  "Gets user profile photos object"
+  ([token user-id] (get-user-profile-photos token user-id {}))
+  ([token user-id options]
+   (let [url  (str base-url token "/getUserProfilePhotos")
+         body (into {:user_id user-id} options)
+         resp (http/post url {:content-type :json
+                              :as           :json
+                              :form-params  body})]
+     (-> resp :body))))
+
+
 (defn send-text
   "Sends message to the chat"
   ([token chat-id text] (send-text token chat-id {} text))
   ([token chat-id options text]
    (let [url  (str base-url token "/sendMessage")
          body (into {:chat_id chat-id :text text} options)
+         resp (http/post url {:content-type :json
+                              :as           :json
+                              :form-params  body})]
+     (-> resp :body))))
+
+(defn forward-message
+  "Forwards a message from to a chat"
+  ([token chat-id from-chat-id message-id]
+   (forward-message token chat-id from-chat-id message-id {}))
+  ([token chat-id from-chat-id message-id options]
+   (let [url  (str base-url token "/forwardMessage")
+         body (into {:chat_id      chat-id
+                     :from_chat_id from-chat-id
+                     :message_id   message-id} options)
          resp (http/post url {:content-type :json
                               :as           :json
                               :form-params  body})]
@@ -61,9 +98,9 @@
          query (into {:chat_id chat-id :text text :message_id message-id} options)
          resp  (http/post url {:content-type :json
                                :as           :json
-                               :form-params  query})
-         ]
+                               :form-params  query})]
      (-> resp :body))))
+
 
 (defn delete-text
   "Removing a message from the chat"
@@ -74,6 +111,7 @@
                               :as           :json
                               :form-params  query})]
     (-> resp :body)))
+
 
 (defn send-file [token chat-id options file method field filename]
   "Helper function to send various kinds of files as multipart-encoded"
@@ -95,7 +133,7 @@
 (defn of-type?
   "Does the extension of file match any of the
   extensions in valid-extensions?"
-  [file valid-extensions]
+  [^File file valid-extensions]
   (some #(-> file .getName (.endsWith %))
         valid-extensions))
 
@@ -149,6 +187,7 @@
    (assert-file-type sticker ["webp"])
    (send-file token chat-id options sticker "/sendSticker" "sticker" "sticker.webp")))
 
+
 (defn answer-inline
   "Sends an answer to an inline query"
   ([token inline-query-id results] (answer-inline token inline-query-id {} results))
@@ -159,6 +198,7 @@
                               :as           :json
                               :form-params  body})]
      (-> resp :body))))
+
 
 (defn answer-callback
   "Sends an answer to an callback query"
